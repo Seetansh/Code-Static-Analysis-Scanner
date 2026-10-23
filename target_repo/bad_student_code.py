@@ -1,5 +1,3 @@
-# target_repo/bad_student_code.py
-
 import os
 
 # This is a critical security violation we want to catch
