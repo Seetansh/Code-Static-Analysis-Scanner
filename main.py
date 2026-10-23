@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import ast
 
 TARGET_DIR = "target_repo"
 
@@ -26,18 +27,44 @@ def scan_for_secrets(filepath):
                 })
     return violations
 
+def check_function_length(filepath):
+    violations = []
+    with open(filepath, 'r', encoding='utf-8') as f:
+        content = f.read()
+        
+    try:
+        # Parse the code into a syntax tree
+        tree = ast.parse(content)
+        
+        # Walk through every node in the code
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef): # If it's a function
+                length = node.end_lineno - node.lineno
+                if length > 10: # Fails if longer than 10 lines
+                    violations.append({
+                        "rule": "QUAL-01",
+                        "file": filepath,
+                        "line": node.lineno,
+                        "message": f"Code Quality: Function '{node.name}' is {length} lines long. Max allowed is 10."
+                    })
+    except SyntaxError:
+        pass # Ignore files with broken Python syntax for now
+        
+    return violations
+
+
 def run_engine():
     all_violations = []
     
-    # 1. Walk the directory
+    # 1.directory scanning
     for root, _, files in os.walk(TARGET_DIR):
         for file in files:
             if file.endswith('.py'):
                 filepath = os.path.join(root, file)
                 
-                # 2. Run the security scan on each file
-                file_violations = scan_for_secrets(filepath)
-                all_violations.extend(file_violations)
+                # 2. Running the security scan on each file
+                all_violations.extend(scan_for_secrets(filepath))
+                all_violations.extend(check_function_length(filepath))
                 
     # 3. Output the report
     report = {
