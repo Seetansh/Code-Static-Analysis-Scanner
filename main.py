@@ -9,7 +9,7 @@ def scan_for_secrets(filepath):
     # Regex patterns for common secrets
     secret_patterns = [r"sk_live_[a-zA-Z0-9]{24}", r"(password|secret)\s*=\s*['\"].+['\"]"]
     
-    with open(filepath, 'r', encoding='utf-8') as file:
+    with open(filepath, 'r', encoding='utf-8', errors="ignore") as file:
         lines = file.readlines()
         
     for line_num, line in enumerate(lines, 1):
@@ -48,6 +48,25 @@ def check_function_length(filepath):
         
     return violations
 
+def check_project_structure(target_dir):
+    violations = []
+    required_dirs = {'routes', 'models'}
+    
+    existing_dirs = set()
+    for root, dirs, _ in os.walk(target_dir):
+        for d in dirs:
+            existing_dirs.add(d)
+            
+    missing = required_dirs - existing_dirs
+    print(missing)
+    if missing:
+        violations.append({
+            "rule": "ARCH-01",
+            "file": "Project Root",
+            "line": 0,
+            "message": f"Architecture: Missing mandatory directories: {list(missing)}. Projects must follow standard layout."
+        })
+    return violations
 
 def run_engine(target_dir):
     if not os.path.exists(target_dir):
@@ -55,8 +74,11 @@ def run_engine(target_dir):
         return
     
     all_violations = []
+
+    # running structural check on root
+    all_violations.extend(check_project_structure(target_dir))
     
-    # 1.directory scanning
+    # 1.directory scanning - file level scanning
     for root, _, files in os.walk(target_dir):
         for file in files:
             if file.endswith('.py'):
