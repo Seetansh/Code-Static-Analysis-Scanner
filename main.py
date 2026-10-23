@@ -2,16 +2,12 @@ import os
 import re
 import json
 import ast
-
-TARGET_DIR = "target_repo"
+import argparse
 
 def scan_for_secrets(filepath):
     violations = []
     # Regex patterns for common secrets
-    secret_patterns = [
-        r"sk_live_[a-zA-Z0-9]{24}",
-        r"(password|secret)\s*=\s*['\"].+['\"]"
-    ]
+    secret_patterns = [r"sk_live_[a-zA-Z0-9]{24}", r"(password|secret)\s*=\s*['\"].+['\"]"]
     
     with open(filepath, 'r', encoding='utf-8') as file:
         lines = file.readlines()
@@ -53,11 +49,15 @@ def check_function_length(filepath):
     return violations
 
 
-def run_engine():
+def run_engine(target_dir):
+    if not os.path.exists(target_dir):
+        print(f"Error: Directory '{target_dir}' does not exist.")
+        return
+    
     all_violations = []
     
     # 1.directory scanning
-    for root, _, files in os.walk(TARGET_DIR):
+    for root, _, files in os.walk(target_dir):
         for file in files:
             if file.endswith('.py'):
                 filepath = os.path.join(root, file)
@@ -76,4 +76,7 @@ def run_engine():
     print(json.dumps(report, indent=2))
 
 if __name__ == "__main__":
-    run_engine()
+    parser = argparse.ArgumentParser(description="Lightweight Python Static Analysis Scanner")
+    parser.add_argument("--path", required=True, help="Path to the target repository directory to scan")
+    args = parser.parse_args()
+    run_engine(args.path)
